@@ -1,2 +1,17 @@
-# Gestion-de-prestamos-de-notebooks
-Sistema web para registrar y administrar el préstamo de notebooks, permitiendo controlar disponibilidad, fechas y estado de los equipos. Proyecto orientado a práctica de desarrollo y organización de recursos informáticos.
+# Gestión de PCs Prestadas
+
+Sistema web para registrar el préstamo de computadoras.
+
+## Funcionalidades
+- Alta de PCs
+- Registro de préstamos
+- Control de fechas
+- Estado: disponible / prestada
+
+## Tecnologías
+- HTML
+- CSS
+- JavaScript
+
+## Objetivo
+Proyecto práctico para organización interna y práctica de desarrollo web.
