@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Préstamos - ISFT Nº12</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .contenedor {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .btn-volver {
+            background: #6c757d;
+        }
+
+        .btn-volver:hover {
+            background: #5a6268;
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .sin-datos {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+
+        /* Estilos para SweetAlert */
+        .swal2-input, .swal2-textarea {
+            width: 100% !important;
+            margin: 10px 0 !important;
+        }
+
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: Arial;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="contenedor">
+        <h1>📦 Gestión de Préstamos</h1>
+        
+        <div class="toolbar">
+            <button id="btnVolver" class="btn-volver">⬅️ Volver al Menú</button>
+            
+            <label>Filtrar:</label>
+            <select id="filtroEstado">
+                <option value="">Todos</option>
+                <option value="Activo">Activo</option>
+                <option value="Completado">Completado</option>
+            </select>
+            
+            <button id="btnNuevo">➕ Nuevo Préstamo</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Notebook</th>
+                    <th>Usuario</th>
+                    <th>Fecha Préstamo</th>
+                    <th>Devolución Prevista</th>
+                    <th>Observaciones</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPrestamos">
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { obtenerPrestamos, guardarPrestamo, completarPrestamo, eliminarPrestamo, actualizarPrestamo, obtenerNotebooks, buscarNotebookPorId, buscarUsuarioPorId, obtenerBD } from "../bbdd/BBDD.js";
+
+        const usuarioActivo = JSON.parse(sessionStorage.getItem("usuarioActivo"));
+        if (!usuarioActivo) {
+            window.location.href = "../index.html";
+        }
+
+        const btnVolver = document.getElementById("btnVolver");
+        const btnNuevo = document.getElementById("btnNuevo");
+        const filtro = document.getElementById("filtroEstado");
+        const tbody = document.getElementById("tbodyPrestamos");
+
+        // ============ FUNCIONES AUXILIARES ============
+
+        const buscarEnArray = (array, id) => {
+            for (let i = 0; i < array.length; i++) {
+                if (array[i].id === id) {
+                    return array[i];
+                }
+            }
+            return null;
+        };
+
+        const filtrarArray = (array, propiedad, valor) => {
+            const filtrado = [];
+            for (let i = 0; i < array.length; i++) {
+                if (!valor || array[i][propiedad] === valor) {
+                    filtrado.push(array[i]);
+                }
+            }
+            return filtrado;
+        };
+
+        const formatearFechaCreacion = (fechaTexto) => {
+            if (!fechaTexto) return "-";
+            // Si viene en formato "DD/MM/YYYY HH:MM"
+            if (fechaTexto.includes("/")) {
+                return fechaTexto.split(" ")[0];
+            }
+            // Si viene en formato ISO
+            return fechaTexto.split("T")[0];
+        };
+
+        const crearFila = (prestamo) => {
+            const notebook = buscarNotebookPorId(prestamo.notebookId);
+            const usuario = buscarUsuarioPorId(prestamo.usuarioId);
+
+            const tr = document.createElement("tr");
+
+            const td1 = document.createElement("td");
+            td1.textContent = prestamo.id;
+
+            const td2 = document.createElement("td");
+            td2.textContent = notebook ? notebook.codigo : "N/A";
+
+            const td3 = document.createElement("td");
+            td3.textContent = usuario ? usuario.dni : "N/A";
+
+            const td4 = document.createElement("td");
+            td4.textContent = formatearFechaCreacion(prestamo.fechaCreacion);
+
+            const td5 = document.createElement("td");
+            td5.textContent = prestamo.fechaDevolucionPrevista || "-";
+
+            const td6 = document.createElement("td");
+            td6.textContent = prestamo.observaciones || "-";
+
+            const td7 = document.createElement("td");
+            td7.textContent = prestamo.estado;
+
+            const td8 = document.createElement("td");
+
+            if (prestamo.estado === "Activo") {
+                const btnCompletar = document.createElement("button");
+                btnCompletar.textContent = "✅ Completar";
+                btnCompletar.setAttribute("data-id", prestamo.id);
+                btnCompletar.addEventListener("click", (e) => {
+                    const id = parseInt(e.target.dataset.id);
+                    completarPrestamoClick(id);
+                });
+                td8.appendChild(btnCompletar);
+            }
+
+            const btnEditar = document.createElement("button");
+            btnEditar.textContent = "✏️ Editar";
+            btnEditar.setAttribute("data-id", prestamo.id);
+            btnEditar.addEventListener("click", (e) => {
+                const id = parseInt(e.target.dataset.id);
+                editarPrestamo(id);
+            });
+
+            const btnEliminar = document.createElement("button");
+            btnEliminar.textContent = "🗑️ Eliminar";
+            btnEliminar.setAttribute("data-id", prestamo.id);
+            btnEliminar.addEventListener("click", (e) => {
+                const id = parseInt(e.target.dataset.id);
+                eliminarPrestamoClick(id);
+            });
+
+            td8.appendChild(btnEditar);
+            td8.appendChild(btnEliminar);
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tr.appendChild(td5);
+            tr.appendChild(td6);
+            tr.appendChild(td7);
+            tr.appendChild(td8);
+
+            return tr;
+        };
+
+        const cargarPrestamos = () => {
+            tbody.textContent = "";
+            const prestamos = obtenerPrestamos();
+            const filtroValor = filtro.value;
+            const prestamosFiltrados = filtrarArray(prestamos, "estado", filtroValor);
+
+            if (prestamosFiltrados.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = "8";
+                td.className = "sin-datos";
+                td.textContent = "No hay préstamos para mostrar";
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            for (let i = 0; i < prestamosFiltrados.length; i++) {
+                const fila = crearFila(prestamosFiltrados[i]);
+                tbody.appendChild(fila);
+            }
+        };
+
+        const crearOpcionesNotebooks = () => {
+            const notebooks = obtenerNotebooks();
+            const disponibles = [];
+
+            for (let i = 0; i < notebooks.length; i++) {
+                if (notebooks[i].estado === "Disponible") {
+                    disponibles.push(notebooks[i]);
+                }
+            }
+
+            let opciones = '<option value="">Seleccionar Notebook</option>';
+            for (let i = 0; i < disponibles.length; i++) {
+                opciones += `<option value="${disponibles[i].id}">${disponibles[i].codigo} - ${disponibles[i].marca}</option>`;
+            }
+            return opciones;
+        };
+
+        const crearOpcionesUsuarios = (usuarioActualId = null) => {
+            const usuarios = obtenerBD();
+            let opciones = '<option value="">Seleccionar Usuario</option>';
+
+            for (let i = 0; i < usuarios.length; i++) {
+                const selected = usuarioActualId && usuarios[i].id === usuarioActualId ? "selected" : "";
+                opciones += `<option value="${usuarios[i].id}" ${selected}>${usuarios[i].dni} - ${usuarios[i].nombre}</option>`;
+            }
+            return opciones;
+        };
+
+        const abrirModalCrear = async () => {
+            const { value: resultado } = await Swal.fire({
+                title: "Crear Préstamo",
+                html: `
+                    <div class="form-group">
+                        <label>Notebook:</label>
+                        <select id="notebook" class="swal2-input">
+                            ${crearOpcionesNotebooks()}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Usuario:</label>
+                        <select id="usuario" class="swal2-input">
+                            ${crearOpcionesUsuarios()}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Fecha Devolución:</label>
+                        <input id="fecha" type="date" class="swal2-input">
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "Guardar",
+                width: "600px"
+            });
+
+            if (resultado) {
+                const notebookId = document.getElementById("notebook").value;
+                const usuarioId = document.getElementById("usuario").value;
+                const fecha = document.getElementById("fecha").value;
+
+                if (notebookId && usuarioId && fecha) {
+                    guardarPrestamo({
+                        notebookId: parseInt(notebookId),
+                        usuarioId: parseInt(usuarioId),
+                        fechaDevolucionPrevista: fecha,
+                        observaciones: ""
+                    });
+                    cargarPrestamos();
+                    Swal.fire("Éxito", "Préstamo creado", "success");
+                } else {
+                    Swal.fire("Error", "Completa todos los campos", "error");
+                }
+            }
+        };
+
+        const editarPrestamo = async (id) => {
+            const prestamos = obtenerPrestamos();
+            const prestamo = buscarEnArray(prestamos, id);
+
+            if (!prestamo) {
+                Swal.fire("Error", "Préstamo no encontrado", "error");
+                return;
+            }
+
+            const { value: resultado } = await Swal.fire({
+                title: "Editar Préstamo",
+                html: `
+                    <div class="form-group">
+                        <label>Usuario:</label>
+                        <select id="usuario" class="swal2-input">
+                            ${crearOpcionesUsuarios(prestamo.usuarioId)}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Fecha Devolución:</label>
+                        <input id="fecha" type="date" class="swal2-input" value="${prestamo.fechaDevolucionPrevista}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Observaciones:</label>
+                        <textarea id="obs" class="swal2-input">${prestamo.observaciones || ""}</textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "Guardar",
+                width: "600px"
+            });
+
+            if (resultado) {
+                const usuarioId = document.getElementById("usuario").value;
+                const fecha = document.getElementById("fecha").value;
+                const obs = document.getElementById("obs").value;
+
+                actualizarPrestamo(id, {
+                    usuarioId: parseInt(usuarioId),
+                    fechaDevolucionPrevista: fecha,
+                    observaciones: obs
+                });
+                cargarPrestamos();
+                Swal.fire("Éxito", "Préstamo actualizado", "success");
+            }
+        };
+
+        const completarPrestamoClick = async (id) => {
+            const { value: obs } = await Swal.fire({
+                title: "Completar Préstamo",
+                html: `
+                    <div class="form-group">
+                        <label>Observaciones de devolución:</label>
+                        <textarea id="obs" class="swal2-input" placeholder="Ej: Sin novedad, Todo OK"></textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "Completar",
+                width: "600px"
+            });
+
+            if (obs !== undefined) {
+                completarPrestamo(id, obs);
+                cargarPrestamos();
+                Swal.fire("Éxito", "Préstamo completado", "success");
+            }
+        };
+
+        const eliminarPrestamoClick = async (id) => {
+            const { isConfirmed } = await Swal.fire({
+                title: "¿Eliminar préstamo?",
+                text: "Esta acción no se puede deshacer",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dc3545",
+                confirmButtonText: "Sí, eliminar"
+            });
+
+            if (isConfirmed) {
+                eliminarPrestamo(id);
+                cargarPrestamos();
+                Swal.fire("Éxito", "Préstamo eliminado", "success");
+            }
+        };
+
+        // ============ EVENT LISTENERS ============
+
+        btnVolver.addEventListener("click", () => {
+            window.location.href = "menu.html";
+        });
+
+        btnNuevo.addEventListener("click", abrirModalCrear);
+
+        filtro.addEventListener("change", cargarPrestamos);
+
+        // ============ INICIALIZACIÓN ============
+
+        cargarPrestamos();
+    </script>
+</body>
+</html>

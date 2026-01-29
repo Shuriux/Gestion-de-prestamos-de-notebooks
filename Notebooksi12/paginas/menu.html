@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Principal - ISFT Nº12</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --danger: #dc3545;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .menu-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        #welcomeMsg {
+            margin-top: 10px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .menu-header {
+            margin-bottom: 30px;
+        }
+
+        .menu-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            background: white;
+            border: 3px solid var(--primary);
+            padding: 30px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .menu-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-5px);
+        }
+
+        .menu-btn-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #c82333;
+        }
+
+        @media (max-width: 600px) {
+            .menu-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="menu-header">
+            <h1>🎓 ISFT Nº12</h1>
+            <p>Sistema de Préstamos de Notebooks</p>
+            <p id="welcomeMsg"></p>
+        </div>
+
+        <div class="menu-buttons">
+            <a href="usuarios.html" class="menu-btn">
+                <div class="menu-btn-icon">👥</div>
+                Usuarios
+            </a>
+
+            <a href="notebooks.html" class="menu-btn">
+                <div class="menu-btn-icon">💻</div>
+                Notebooks
+            </a>
+
+            <a href="reservas.html" class="menu-btn">
+                <div class="menu-btn-icon">📅</div>
+                Reservas
+            </a>
+
+            <a href="prestamos.html" class="menu-btn">
+                <div class="menu-btn-icon">📋</div>
+                Préstamos
+            </a>
+        </div>
+
+        <button id="btnCerrar">🚪 Cerrar Sesión</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // ============ FUNCIONES AUXILIARES ============
+
+        const obtenerUsuarioActivo = () => {
+            const usuario = sessionStorage.getItem("usuarioActivo");
+            return JSON.parse(usuario);
+        };
+
+        const guardarTexto = (elementoId, texto) => {
+            const elemento = document.getElementById(elementoId);
+            elemento.textContent = texto;
+        };
+
+        const verificarSesion = () => {
+            const usuarioActivo = obtenerUsuarioActivo();
+            if (!usuarioActivo) {
+                window.location.href = "../index.html";
+            }
+            return usuarioActivo;
+        };
+
+        const mostrarBienvenida = (usuario) => {
+            const nombre = usuario.nombre;
+            const apellido = usuario.apellido;
+            const mensaje = "Bienvenido, " + nombre + " " + apellido;
+            guardarTexto("welcomeMsg", mensaje);
+        };
+
+        const cerrarSesion = () => {
+            Swal.fire({
+                title: '¿Cerrar sesión?',
+                text: "¿Estás seguro de que deseas salir?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, salir',
+                cancelButtonText: 'Cancelar'
+            }).then((resultado) => {
+                if (resultado.isConfirmed) {
+                    sessionStorage.removeItem("usuarioActivo");
+                    window.location.href = "../index.html";
+                }
+            });
+        };
+
+        // ============ EVENT LISTENERS ============
+
+        const btnCerrar = document.getElementById("btnCerrar");
+        btnCerrar.addEventListener("click", cerrarSesion);
+
+        // ============ INICIALIZACIÓN ============
+
+        const usuarioActivo = verificarSesion();
+        mostrarBienvenida(usuarioActivo);
+    </script>
+</body>
+</html>

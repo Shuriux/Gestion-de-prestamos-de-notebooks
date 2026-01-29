@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - ISFT Nº12</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-hover: #5568d3;
+            --danger: #dc3545;
+            --danger-hover: #c82333;
+            --success: #28a745;
+            --secondary: #6c757d;
+            --bg: #f5f6fa;
+            --white: white;
+            --border: #e0e0e0;
+            --badge-admin: #d4edda;
+            --badge-docente: #e2e3e5;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-back {
+            background: var(--secondary);
+            color: var(--white);
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--white);
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .badge-admin {
+            background: #10b981;
+        }
+
+        .badge-docente {
+            background: #6b7280;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>👥 Gestión de Usuarios</h1>
+
+        <div class="toolbar">
+            <div>
+                <button class="btn btn-back" id="btnVolver">⬅️ Volver al Menú</button>
+                <button class="btn btn-primary" id="btnCrear">➕ Crear Usuario</button>
+            </div>
+        </div>
+
+        <table id="tablaUsuarios">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>DNI</th>
+                    <th>Email</th>
+                    <th>Tipo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyUsuarios">
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module">
+        import { obtenerBD, GuardarElemento, eliminarUsuario, actualizarUsuario } from "../bbdd/BBDD.js";
+
+        // ============ VERIFICAR SESIÓN ============
+        const usuarioActivo = JSON.parse(sessionStorage.getItem("usuarioActivo"));
+        if (!usuarioActivo) {
+            window.location.href = "../index.html";
+        }
+
+        // ============ ELEMENTOS DEL DOM ============
+        const btnVolver = document.getElementById("btnVolver");
+        const btnCrear = document.getElementById("btnCrear");
+        const tbody = document.getElementById("tbodyUsuarios");
+
+        // ============ FUNCIONES AUXILIARES ============
+
+        const buscarEnArray = (array, id) => {
+            for (let i = 0; i < array.length; i++) {
+                if (array[i].id === id) {
+                    return array[i];
+                }
+            }
+            return null;
+        };
+
+        const crearFilaUsuario = (usuario) => {
+            const tr = document.createElement("tr");
+
+            const td1 = document.createElement("td");
+            td1.textContent = usuario.id;
+
+            const td2 = document.createElement("td");
+            td2.textContent = usuario.user;
+
+            const td3 = document.createElement("td");
+            td3.textContent = usuario.nombre;
+
+            const td4 = document.createElement("td");
+            td4.textContent = usuario.apellido;
+
+            const td5 = document.createElement("td");
+            td5.textContent = usuario.dni;
+
+            const td6 = document.createElement("td");
+            td6.textContent = usuario.email;
+
+            const td7 = document.createElement("td");
+            const span = document.createElement("span");
+            span.className = `badge ${usuario.tipo === 'Administrador' ? 'badge-admin' : 'badge-docente'}`;
+            span.textContent = usuario.tipo;
+            td7.appendChild(span);
+
+            const td8 = document.createElement("td");
+            td8.className = "action-buttons";
+
+            const btnEditar = document.createElement("button");
+            btnEditar.className = "btn btn-success";
+            btnEditar.setAttribute("data-action", "editar");
+            btnEditar.setAttribute("data-id", usuario.id);
+            btnEditar.textContent = "✏️";
+
+            const btnEliminar = document.createElement("button");
+            btnEliminar.className = "btn btn-danger";
+            btnEliminar.setAttribute("data-action", "eliminar");
+            btnEliminar.setAttribute("data-username", usuario.user);
+            btnEliminar.textContent = "🗑️";
+
+            td8.appendChild(btnEditar);
+            td8.appendChild(btnEliminar);
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tr.appendChild(td5);
+            tr.appendChild(td6);
+            tr.appendChild(td7);
+            tr.appendChild(td8);
+
+            return tr;
+        };
+
+        const cargarUsuarios = () => {
+            const usuarios = obtenerBD();
+            tbody.textContent = "";
+
+            for (let i = 0; i < usuarios.length; i++) {
+                const fila = crearFilaUsuario(usuarios[i]);
+                tbody.appendChild(fila);
+            }
+
+            agregarEventosTabla();
+        };
+
+        const abrirModalCrear = async () => {
+            const { value: formValues } = await Swal.fire({
+                title: 'Crear Nuevo Usuario',
+                html: `
+                    <input id="swal-user" class="swal2-input" placeholder="Usuario" required>
+                    <input id="swal-pass" type="password" class="swal2-input" placeholder="Contraseña" required>
+                    <input id="swal-nombre" class="swal2-input" placeholder="Nombre" required>
+                    <input id="swal-apellido" class="swal2-input" placeholder="Apellido" required>
+                    <input id="swal-dni" class="swal2-input" placeholder="DNI" required>
+                    <input id="swal-email" type="email" class="swal2-input" placeholder="Email" required>
+                    <select id="swal-tipo" class="swal2-input">
+                        <option value="Docente">Docente</option>
+                        <option value="Administrador">Administrador</option>
+                    </select>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Crear',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#667eea',
+                preConfirm: () => {
+                    return {
+                        user: document.getElementById('swal-user').value,
+                        password: document.getElementById('swal-pass').value,
+                        nombre: document.getElementById('swal-nombre').value,
+                        apellido: document.getElementById('swal-apellido').value,
+                        dni: document.getElementById('swal-dni').value,
+                        email: document.getElementById('swal-email').value,
+                        tipo: document.getElementById('swal-tipo').value
+                    }
+                }
+            });
+
+            if (formValues) {
+                const usuarios = obtenerBD();
+                let existe = false;
+                for (let i = 0; i < usuarios.length; i++) {
+                    if (usuarios[i].user === formValues.user) {
+                        existe = true;
+                        break;
+                    }
+                }
+
+                if (existe) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'El usuario ya existe',
+                        confirmButtonColor: '#667eea'
+                    });
+                } else {
+                    GuardarElemento(formValues);
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Usuario Creado!',
+                        text: `El usuario ${formValues.user} ha sido creado exitosamente`,
+                        confirmButtonColor: '#667eea'
+                    });
+                    cargarUsuarios();
+                }
+            }
+        };
+
+        const editarUsuario = async (id) => {
+            const usuarios = obtenerBD();
+            let usuario = null;
+
+            for (let i = 0; i < usuarios.length; i++) {
+                if (usuarios[i].id === id) {
+                    usuario = usuarios[i];
+                    break;
+                }
+            }
+
+            if (!usuario) {
+                Swal.fire('Error', 'Usuario no encontrado', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Editar Usuario',
+                html: `
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Usuario</label>
+                    <input id="swal-user" class="swal2-input" value="${usuario.user}">
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Nombre</label>
+                    <input id="swal-nombre" class="swal2-input" placeholder="Nombre" value="${usuario.nombre}">
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Apellido</label>
+                    <input id="swal-apellido" class="swal2-input" placeholder="Apellido" value="${usuario.apellido}">
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">DNI</label>
+                    <input id="swal-dni" class="swal2-input" placeholder="DNI" value="${usuario.dni}">
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Email</label>
+                    <input id="swal-email" type="email" class="swal2-input" placeholder="Email" value="${usuario.email}">
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Tipo</label>
+                    <select id="swal-tipo" class="swal2-input">
+                        <option value="Docente" ${usuario.tipo === 'Docente' ? 'selected' : ''}>Docente</option>
+                        <option value="Administrador" ${usuario.tipo === 'Administrador' ? 'selected' : ''}>Administrador</option>
+                    </select>
+                    
+                    <label style="display: block; text-align: left; font-weight: bold; margin-top: 10px;">Nueva contraseña (dejar vacío para no cambiar)</label>
+                    <input id="swal-pass" type="password" class="swal2-input" placeholder="Nueva contraseña">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#667eea',
+                preConfirm: () => {
+                    const nuevaPass = document.getElementById('swal-pass').value;
+                    return {
+                        user: document.getElementById('swal-user').value,
+                        nombre: document.getElementById('swal-nombre').value,
+                        apellido: document.getElementById('swal-apellido').value,
+                        dni: document.getElementById('swal-dni').value,
+                        email: document.getElementById('swal-email').value,
+                        tipo: document.getElementById('swal-tipo').value,
+                        ...(nuevaPass && { password: nuevaPass })
+                    }
+                }
+            });
+
+            if (formValues) {
+                actualizarUsuario(id, formValues);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Actualizado!',
+                    text: 'El usuario ha sido actualizado',
+                    confirmButtonColor: '#667eea'
+                });
+                cargarUsuarios();
+            }
+        };
+
+        const eliminarUsuarioClick = (username) => {
+            Swal.fire({
+                title: '¿Eliminar usuario?',
+                text: `¿Estás seguro de eliminar al usuario ${username}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (eliminarUsuario(username)) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Eliminado',
+                            text: 'El usuario ha sido eliminado',
+                            confirmButtonColor: '#667eea'
+                        });
+                        cargarUsuarios();
+                    }
+                }
+            });
+        };
+
+        const manejarEventoBoton = (evento) => {
+            let elemento = evento.target;
+            
+            if (elemento.tagName === "BUTTON" && elemento.hasAttribute("data-action")) {
+                const accion = elemento.getAttribute("data-action");
+                
+                if (accion === "editar") {
+                    const id = parseInt(elemento.getAttribute("data-id"));
+                    editarUsuario(id);
+                } else if (accion === "eliminar") {
+                    const username = elemento.getAttribute("data-username");
+                    eliminarUsuarioClick(username);
+                }
+            }
+        };
+
+        const agregarEventosTabla = () => {
+            tbody.removeEventListener("click", manejarEventoBoton);
+            tbody.addEventListener("click", manejarEventoBoton);
+        };
+
+        // ============ EVENT LISTENERS ============
+
+        btnVolver.addEventListener("click", function() {
+            window.location.href = "menu.html";
+        });
+
+        btnCrear.addEventListener("click", abrirModalCrear);
+
+        // ============ INICIALIZACIÓN ============
+
+        cargarUsuarios();
+    </script>
+</body>
+
+</html>

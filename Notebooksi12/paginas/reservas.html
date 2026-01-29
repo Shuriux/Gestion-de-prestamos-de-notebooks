@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservas - ISFT Nº12</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            padding: 5px 10px;
+            background: #dc3545;
+            color: white;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .badge-activa {
+            background: #10b981;
+        }
+
+        .badge-vencida {
+            background: #ef4444;
+        }
+
+        .sin-datos {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+        }
+
+        /* Estilos para SweetAlert */
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: Arial;
+            font-size: 1em;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Gestión de Reservas</h1>
+        
+        <div class="toolbar">
+            <button id="btnVolver" class="btn-back">⬅️ Volver al Menú</button>
+            <button id="btnCrear" class="btn-primary">➕ Nueva Reserva</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Docente</th>
+                    <th>DNI</th>
+                    <th>Notebook</th>
+                    <th>Fecha</th>
+                    <th>Duración</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyReservas">
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { 
+            obtenerReservas, 
+            guardarReserva, 
+            eliminarReserva,
+            obtenerBD,
+            obtenerNotebooks
+        } from "../bbdd/BBDD.js";
+
+        const usuarioActivo = JSON.parse(sessionStorage.getItem("usuarioActivo"));
+        if (!usuarioActivo) {
+            window.location.href = "../index.html";
+        }
+
+        const btnVolver = document.getElementById("btnVolver");
+        const btnCrear = document.getElementById("btnCrear");
+        const tbody = document.getElementById("tbodyReservas");
+
+        // ============ FUNCIONES AUXILIARES ============
+
+        const buscarEnArray = (array, id) => {
+            for (let i = 0; i < array.length; i++) {
+                if (array[i].id === id) {
+                    return array[i];
+                }
+            }
+            return null;
+        };
+
+        const filtrarPorTipo = (array, propiedad, valor) => {
+            const filtrado = [];
+            for (let i = 0; i < array.length; i++) {
+                if (array[i][propiedad] === valor) {
+                    filtrado.push(array[i]);
+                }
+            }
+            return filtrado;
+        };
+
+        const formatearFechaSimple = (fechaISO) => {
+            const fecha = new Date(fechaISO);
+            const dia = fecha.getDate();
+            const mes = fecha.getMonth() + 1;
+            const anio = fecha.getFullYear();
+            const hora = fecha.getHours();
+            const min = fecha.getMinutes();
+
+            const diaStr = dia < 10 ? "0" + dia : dia;
+            const mesStr = mes < 10 ? "0" + mes : mes;
+            const horaStr = hora < 10 ? "0" + hora : hora;
+            const minStr = min < 10 ? "0" + min : min;
+
+            return diaStr + "/" + mesStr + "/" + anio + " " + horaStr + ":" + minStr;
+        };
+
+        const estaVencida = (fechaISO) => {
+            const fechaReserva = new Date(fechaISO);
+            const hoy = new Date();
+            return fechaReserva < hoy;
+        };
+
+        const crearFila = (reserva) => {
+            const usuarios = obtenerBD();
+            const notebooks = obtenerNotebooks();
+            const docente = buscarEnArray(usuarios, reserva.docenteId);
+            const notebook = buscarEnArray(notebooks, reserva.notebookId);
+
+            const vencida = estaVencida(reserva.fecha);
+            const badgeClase = vencida ? "badge-vencida" : "badge-activa";
+            const estadoTexto = vencida ? "Vencida" : "Activa";
+
+            const tr = document.createElement("tr");
+
+            const td1 = document.createElement("td");
+            td1.textContent = reserva.id;
+
+            const td2 = document.createElement("td");
+            if (docente) {
+                td2.textContent = docente.apellido + " " + docente.nombre;
+            } else {
+                td2.textContent = "N/A";
+            }
+
+            const td3 = document.createElement("td");
+            td3.textContent = docente ? docente.dni : "N/A";
+
+            const td4 = document.createElement("td");
+            if (notebook) {
+                td4.textContent = notebook.codigo + " - " + notebook.marca;
+            } else {
+                td4.textContent = "N/A";
+            }
+
+            const td5 = document.createElement("td");
+            td5.textContent = formatearFechaSimple(reserva.fecha);
+
+            const td6 = document.createElement("td");
+            td6.textContent = reserva.duracion + " horas";
+
+            const td7 = document.createElement("td");
+            const span = document.createElement("span");
+            span.className = "badge " + badgeClase;
+            span.textContent = estadoTexto;
+            td7.appendChild(span);
+
+            const td8 = document.createElement("td");
+            const btnEliminar = document.createElement("button");
+            btnEliminar.className = "btn-danger";
+            btnEliminar.textContent = "🗑️ Cancelar";
+            btnEliminar.setAttribute("data-id", reserva.id);
+            btnEliminar.addEventListener("click", (e) => {
+                const id = parseInt(e.target.dataset.id);
+                eliminarReservaClick(id);
+            });
+            td8.appendChild(btnEliminar);
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tr.appendChild(td5);
+            tr.appendChild(td6);
+            tr.appendChild(td7);
+            tr.appendChild(td8);
+
+            return tr;
+        };
+
+        const cargarReservas = () => {
+            tbody.textContent = "";
+            const reservas = obtenerReservas();
+
+            if (reservas.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = "8";
+                td.className = "sin-datos";
+                td.textContent = "No hay reservas registradas";
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            for (let i = 0; i < reservas.length; i++) {
+                const fila = crearFila(reservas[i]);
+                tbody.appendChild(fila);
+            }
+        };
+
+        const crearOpcionesDocentes = () => {
+            const usuarios = obtenerBD();
+            const docentes = filtrarPorTipo(usuarios, "tipo", "Docente");
+            let opciones = '<option value="">Seleccionar Docente</option>';
+
+            for (let i = 0; i < docentes.length; i++) {
+                opciones += `<option value="${docentes[i].id}">${docentes[i].apellido} ${docentes[i].nombre}</option>`;
+            }
+            return opciones;
+        };
+
+        const crearOpcionesNotebooks = () => {
+            const notebooks = obtenerNotebooks();
+            const disponibles = filtrarPorTipo(notebooks, "estado", "Disponible");
+            let opciones = '<option value="">Seleccionar Notebook</option>';
+
+            for (let i = 0; i < disponibles.length; i++) {
+                opciones += `<option value="${disponibles[i].id}">${disponibles[i].codigo} - ${disponibles[i].marca}</option>`;
+            }
+            return opciones;
+        };
+
+        const abrirModalCrear = async () => {
+            const notebooks = obtenerNotebooks();
+            const disponibles = filtrarPorTipo(notebooks, "estado", "Disponible");
+
+            if (disponibles.length === 0) {
+                Swal.fire("Advertencia", "No hay notebooks disponibles", "warning");
+                return;
+            }
+
+            const hoy = new Date().toISOString().split("T")[0];
+
+            const { value: resultado } = await Swal.fire({
+                title: "Nueva Reserva",
+                html: `
+                    <div class="form-group">
+                        <label>Docente:</label>
+                        <select id="docente" class="swal2-input">
+                            ${crearOpcionesDocentes()}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notebook:</label>
+                        <select id="notebook" class="swal2-input">
+                            ${crearOpcionesNotebooks()}
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Fecha:</label>
+                            <input id="fecha" type="date" class="swal2-input" value="${hoy}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Hora:</label>
+                            <input id="hora" type="time" class="swal2-input">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Duración (horas):</label>
+                        <input id="duracion" type="number" class="swal2-input" value="2" min="1" max="24">
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "Crear",
+                cancelButtonText: "Cancelar",
+                width: "600px"
+            });
+
+            if (resultado) {
+                const docenteId = document.getElementById("docente").value;
+                const notebookId = document.getElementById("notebook").value;
+                const fecha = document.getElementById("fecha").value;
+                const hora = document.getElementById("hora").value;
+                const duracion = document.getElementById("duracion").value;
+
+                if (docenteId && notebookId && fecha && hora && duracion) {
+                    const fechaCompleta = new Date(fecha + "T" + hora).toISOString();
+                    guardarReserva({
+                        docenteId: parseInt(docenteId),
+                        notebookId: parseInt(notebookId),
+                        fecha: fechaCompleta,
+                        duracion: parseInt(duracion)
+                    });
+                    cargarReservas();
+                    Swal.fire("Éxito", "Reserva creada correctamente", "success");
+                } else {
+                    Swal.fire("Error", "Completa todos los campos", "error");
+                }
+            }
+        };
+
+        const eliminarReservaClick = async (id) => {
+            const { isConfirmed } = await Swal.fire({
+                title: "¿Cancelar reserva?",
+                text: "¿Estás seguro?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dc3545",
+                confirmButtonText: "Sí, cancelar"
+            });
+
+            if (isConfirmed) {
+                eliminarReserva(id);
+                cargarReservas();
+                Swal.fire("Éxito", "Reserva cancelada", "success");
+            }
+        };
+
+        // ============ EVENT LISTENERS ============
+
+        btnVolver.addEventListener("click", () => {
+            window.location.href = "menu.html";
+        });
+
+        btnCrear.addEventListener("click", abrirModalCrear);
+
+        // ============ INICIALIZACIÓN ============
+
+        cargarReservas();
+    </script>
+</body>
+</html>
